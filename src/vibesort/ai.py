@@ -14,11 +14,12 @@ class VibesortRequest(BaseModel):
     order: Literal["asc", "desc"] = "asc"
 
 
-def vibesort(array: list[int]) -> VibesortResponse:
-    return structured_output(
+def vibesort(array: list[int]) -> tuple[list[int], dict]:
+    result, usage = structured_output(
         content=VibesortRequest(array=array).model_dump_json(),
         response_format=VibesortResponse,
-    ).sorted_array
+    )
+    return result.sorted_array, usage
 
 
 T = TypeVar("T", bound=BaseModel)
@@ -27,8 +28,8 @@ T = TypeVar("T", bound=BaseModel)
 def structured_output(
     content: str,
     response_format: T,
-    model: str = "gpt-4.1-mini",
-) -> T:
+    model: str = "gpt-4o-mini",
+) -> tuple[T, dict]:
     api_key = os.environ["OPENAI_API_KEY"]
     client = openai.OpenAI(api_key=api_key)
 
@@ -48,4 +49,9 @@ def structured_output(
         response_format=response_format,
     )
     response_model = response.choices[0].message.parsed
-    return response_model
+    usage = {
+        "prompt_tokens": response.usage.prompt_tokens,
+        "completion_tokens": response.usage.completion_tokens,
+        "total_tokens": response.usage.total_tokens
+    }
+    return response_model, usage
